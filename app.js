@@ -10,7 +10,7 @@ var Seed = require('seed');
 
 var app = module.exports = express.createServer();// module.exports = express();
 
-var port = 1401;
+var port = 1404;
 // all environments
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
@@ -26,7 +26,7 @@ var NameSpace = {};
 
 NameSpace.Player = Seed.Model.extend('player', {
   schema: new Seed.Schema({
-    username: String,
+    gameid: String,
     progress: Number,
     roomNumber: String
   })
@@ -93,7 +93,7 @@ io.sockets.on('connection', function (socket) {
     data.roomNumber = String(currentRoomNumber);
     var player = db.set('/player/' + id, data)
       , json = player._attributes;
-    console.log('Current Room Number: ' + currentRoomNumber);
+  
     socket.to(String(currentRoomNumber)).emit('game:create', json);
     socket.broadcast.to(String(currentRoomNumber)).emit('game:create', json);
     if(numberOfPlayersInTheRoom == 0){
@@ -134,10 +134,14 @@ io.sockets.on('connection', function (socket) {
     var player = db.get('/player/' + data.id);
     player.set(data);
 
+    var playersRoomNumber = player._attributes.roomNumber;
     var json = player._attributes;
-
-    socket.emit('player/' + data.id + ':update', json);
-    socket.broadcast.emit('player/' + data.id + ':update', json);
+    var prog = player._attributes.progress;
+    socket.to(playersRoomNumber).emit('player/' + data.id + ':update', json);
+    socket.broadcast.to(playersRoomNumber).broadcast.emit('player/' + data.id + ':update', json);
+    if(prog == 27){
+      io.sockets.in(String(playersRoomNumber)).emit('game:empty'); 
+    }
     callback(null, json);
   });
 
